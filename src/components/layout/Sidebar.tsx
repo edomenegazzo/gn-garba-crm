@@ -9,6 +9,7 @@ import {
   Megaphone,
   ScrollText,
   Settings,
+  LogOut,
 } from "lucide-react";
 
 const navItems = [
@@ -20,7 +21,13 @@ const navItems = [
   { href: "/admin", label: "Amministrazione", icon: Settings },
 ];
 
-export function Sidebar() {
+type SidebarProps = {
+  userEmail?: string;
+  userName?: string | null;
+  userRole?: string | null;
+};
+
+export function Sidebar({ userEmail, userName, userRole }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -64,7 +71,31 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="px-6 py-4 border-t border-cream/10 text-[10px] uppercase tracking-[0.2em] text-cream/40">
+      {/* Footer utente */}
+      {userEmail && (
+        <div className="px-6 py-4 border-t border-cream/10">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-cream/40 mb-1">
+            {userRole ?? "—"}
+          </div>
+          <div className="text-sm text-cream truncate mb-2">
+            {userName ?? userEmail}
+          </div>
+          <div className="text-[11px] text-cream/50 truncate mb-3">
+            {userEmail}
+          </div>
+          <form action="/auth/signout" method="post">
+            <button
+              type="submit"
+              className="flex items-center gap-2 text-[11px] uppercase tracking-[0.15em] text-cream/60 hover:text-red transition-colors"
+            >
+              <LogOut size={12} strokeWidth={2} />
+              Esci
+            </button>
+          </form>
+        </div>
+      )}
+
+      <div className="px-6 py-3 border-t border-cream/10 text-[10px] uppercase tracking-[0.2em] text-cream/40">
         v0.1 · sviluppo
       </div>
     </aside>
