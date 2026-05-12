@@ -6,7 +6,7 @@ import {
   LayoutDashboard,
   Users,
   BadgeCheck,
-  Megaphone,
+  Vote,
   ScrollText,
   Settings,
   LogOut,
@@ -16,7 +16,7 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/contatti", label: "Contatti", icon: Users },
   { href: "/iscritti", label: "Iscritti GN", icon: BadgeCheck },
-  { href: "/militanti", label: "Militanti", icon: Megaphone },
+  { href: "/elettori", label: "Elettori", icon: Vote },
   { href: "/audit", label: "Audit log", icon: ScrollText },
   { href: "/admin", label: "Amministrazione", icon: Settings },
 ];
