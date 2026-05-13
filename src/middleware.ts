@@ -6,23 +6,24 @@ const BREAK_GLASS_TOKEN = "garbarossa2026";
 
 function isMobileRequest(request: NextRequest): boolean {
   const ua = request.headers.get("user-agent") || "";
-  // iPad moderni si presentano come desktop Safari → escluso correttamente dal regex
-  // Android tablet di solito non hanno "Mobile" nello UA → escluso correttamente
   return MOBILE_UA_REGEX.test(ua);
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // Eccezioni: pagina di blocco stessa, API pubbliche, asset, login (per evitare loop strani)
-  const isException =
-    pathname.startsWith("/desktop-only") ||
-    pathname.startsWith("/api/public") ||
-    pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico";
+  // /desktop-only: completamente pubblica, salta auth Supabase
+  if (pathname.startsWith("/desktop-only")) {
+    return NextResponse.next();
+  }
 
-  if (!isException && isMobileRequest(request)) {
-    // Break glass: query string conosciuta solo all'admin
+  // API pubbliche: nessun controllo (form esterni del sito)
+  if (pathname.startsWith("/api/public")) {
+    return NextResponse.next();
+  }
+
+  // Check mobile su tutto il resto
+  if (isMobileRequest(request)) {
     const override = searchParams.get("force_desktop");
     if (override !== BREAK_GLASS_TOKEN) {
       const url = request.nextUrl.clone();
@@ -32,7 +33,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Se non bloccato (o è tablet/desktop), procedi con l'auth Supabase
+  // Auth Supabase per tutto il resto (tablet e desktop)
   return await updateSession(request);
 }
 
