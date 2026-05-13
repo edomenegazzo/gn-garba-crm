@@ -51,7 +51,6 @@ const CampagnaColomboSchema = z.object({
     "altri_comuni_lazio",
     "resto_italia",
   ]),
-  residenza: z.string().trim().max(200).optional().nullable(),
   consenso_privacy: z.literal(true, {
     error: "consenso privacy obbligatorio",
   }),
@@ -173,8 +172,6 @@ export async function POST(request: NextRequest) {
     data_nascita_solo_anno: soloAnno,
     municipio: municipioDb,
     municipio_override: true,
-    // residenza libera salvata in note se presente
-    note: data.residenza ? `Residenza: ${data.residenza}` : null,
     fonte: "form_online",
     fonte_dettaglio: "campagna_basta_morti_colombo",
     consenso_privacy: data.consenso_privacy,
