@@ -1,105 +1,70 @@
-# CRM Nucleo Garbatella — Roadmap & Decisioni di Progetto
+# CRM Nucleo Garbatella — Roadmap
 
-Documento di lavoro per tracciare decisioni architetturali, modello dati e prossimi step di sviluppo. Aggiornare a ogni sessione.
+## Stato al 13 maggio 2026 (notte)
 
-## Stato corrente (12 maggio 2026, ore 22)
+### ✅ Completato
 
-### Già fatto
-- Backend Supabase completo: schema, RLS, audit log, viste (Blocchi 1-4)
-- Auth: magic link Supabase, RLS-aware, sidebar utente con logout
-- Pagina `/contatti`: lista con ricerca, filtri (municipio/fonte/categoria), paginazione, tabella stile editoriale
-- Pagina `/contatti/[id]`: dettaglio scheda con info anagrafica, residenza, schede, consensi GDPR
-- Deploy Vercel: app live su https://gn-garba-crm.vercel.app
-- Estensione schema (Blocco 5): campi `referente_id`, `referente_nome_originale`, indirizzo tesseramento separato in `schede_iscritto_gn`
-- Sidebar: voce "Militanti" rinominata in "Elettori" con icona urna (route /elettori)
+**Database**
+- Schema GDPR-aware con RLS
+- 2 categorie mutually exclusive: `elettori`, `iscritto_gn`
+- Trigger auto-tag elettori su INSERT/UPDATE contatto (CAP → municipio territoriale)
+- Trigger mutex tra elettori e iscritto_gn
+- Seed CAP municipi VIII, IX, X (best-guess)
 
-### Da fare nelle prossime sessioni
+**Frontend**
+- Auth magic link (Supabase + SMTP custom Resend)
+- Lista /contatti con filtri/ricerca/paginazione + dettaglio
+- Pagina /elettori con stats età-variabili e filtri territoriali
+- Layout coerente con design system (Tailwind 4 + CSS inline per dettaglio)
 
-#### Priorita' 1 — Import 437 iscritti GN
-- File xlsx da OneDrive (in attesa permessi download corretti)
-- Strumento: Claude Code locale, dati restano sul Mac
-- Logica:
-  - Tutti import come `iscritto_gn`
-  - Consenso privacy = false (Da regolarizzare)
-  - Fonte = import_storico
-  - Detectare "Via Guendalina Borghese 8" come tesseramento fittizio (indirizzo sede sezione)
-  - Popolare `referente_nome_originale` dalla colonna B (militante che ha portato)
-  - Stato tessera = "da_verificare"
-- Mappa CAP IX/X ancora da popolare (Edoardo deve chiedere lista ufficiale al referente nucleo)
+**Infrastruttura**
+- Deploy produzione Vercel
+- SMTP custom via Resend su crm.nucleogarbatella.it
+- Repository GitHub privato
 
-#### Priorita' 2 — Modello tag (DECISIONE PRESA, da implementare)
-Sistema di tag manuali (NON dedotti automaticamente). Ogni contatto puo' avere:
-- Tag `elettori` -> finisce in pagina /elettori
-- Tag `iscritto_gn` -> finisce in pagina /iscritti
+### 🔜 Prossimi passi
 
-I due tag sono mutuamente esclusivi. Un contatto non puo' avere entrambi:
-- Se un elettore diventa iscritto GN, perde tag elettori e acquisisce iscritto_gn
-- Esistenza del tag iscritto_gn implica anche la creazione della scheda_iscritto_gn
+**Priorità 1 — Endpoint pubblici di raccolta contatti**
+- `/api/public/contatti` per form banchetto (nucleogarbatella.it/banchetto)
+- `/api/public/campagne/colombo` per campagna "BASTA MORTI Colombo"
+- Rate limiting + honeypot server-side
+- Validazione GDPR su consenso
 
-Eliminare dallo schema le categorie esistenti inutili:
-- simpatizzante_fdi, simpatizzante_gn (non piu' necessarie nel modello semplificato)
-- richiesta_iscrizione_gn (gestita diversamente)
-- iscritto_fdi, militante, dirigente_gn (DA DISCUTERE: mantenere o no?)
+**Priorità 2 — Form pubblici sul sito Nucleo Garbatella**
+- Form generico /banchetto (HTML pronto, costruito separatamente)
+- Form campagna /campagne/colombo (HTML pronto, costruito separatamente)
+- Collegamento al sito via dominio nucleogarbatella.it (migrazione da Vercel preview a dominio finale)
 
-#### Priorita' 3 — Pagina /elettori
-Filtri pagina:
-- Tag elettori (implicito, sempre presente)
-- Municipio: default VIII/IX/X, espandibile
-- Eta': input data riferimento + toggle Tutti/Maggiorenni/Minorenni
-- Fonte di acquisizione
+**Priorità 3 — Pagina /campagne nel CRM**
+- Visualizzare risposte raccolte da campagne (Colombo per ora)
+- Decisione: tabella dedicata `risposte_campagna` vs campo `note` JSON
 
-Filtro municipio applicato come AND con tag (interpretazione Q): anche se per errore taggi un fuori-zona come elettore, NON appare in /elettori senza municipio territoriale.
+**Priorità 4 — Pagina /iscritti GN**
+- Clone di /elettori con filtro iscritto_gn
+- Necessaria dopo import storico
 
-#### Priorita' 4 — Sistema verifica indirizzi (modello "ibrido pragmatico")
-Problema: i CAP a Roma non corrispondono ai municipi (confini di municipio passano a meta' via).
+**Priorità 5 — Import storico 600+ iscritti GN**
+- Dato interno, migrabile in qualunque momento
+- File xlsx da OneDrive
+- Strumento: Claude Code locale + SERVICE_ROLE key
 
-Soluzione:
-- Inserimenti automatici (form pubblici) -> CAP usato come best guess + flag `municipio_da_verificare=true` per casi ambigui (CAP a confine noti)
-- In `/contatti` aggiungere sezione "Da verificare" che mostra solo i flaggati
-- Coordinatore controlla 1-by-1, click su nome -> apre Google Maps della via+civico -> conferma o corregge
-- In futuro (5k+ contatti) passare a PostGIS + GeoJSON Roma Capitale
+**Priorità 6 — Geocoding PostGIS (futuro)**
+- Sostituire mappa CAP con confini reali dei municipi
+- Necessario per volumi 5k+ contatti
+- Sessione dedicata 2-3 ore
 
-#### Priorita' 5 — Form pubblici
-Due form distinti:
-1. G-form campagna specifica: Google Forms con webhook che invia dati a Supabase. Tag applicato in base al form (es. campagna "vieni alla festa" -> tag elettori). Da configurare per ogni campagna.
-2. Banchetto digitale: PWA proprietaria offline-first per tablet/telefono in piazza. Form veloce 6-8 campi, sincronizza quando torna online. Tag elettori applicato automaticamente.
+### 🗒️ Decisioni operative consolidate
 
-#### Priorita' 6 — Pagina /iscritti
-Lista pre-filtrata con tag iscritto_gn, scheda iscritto completa, gestione stato tessera (attiva/scaduta/da_rinnovare).
+- **Tag elettori** = auto via CAP territoriale (VIII/IX/X), non manuale
+- **Tag iscritto_gn** = manuale, applicato al momento del tesseramento confermato
+- **Promozione elettore → iscritto** = automatica (trigger mutex chiude elettori)
+- **Degradazione iscritto → elettore** = manuale (caso raro, valutazione coordinatore)
+- **Elettori contattati** via comunicazioni di massa (newsletter, eventi)
+- **Iscritti GN contattati** via canali interni (WhatsApp gruppi, contatto diretto referente)
 
-#### Priorita' 7 — Pagina Nuovi Iscritti GN
-Vista filtrata su /iscritti: solo iscritti negli ultimi 30 giorni, per attenzione operativa (chiamata di benvenuto, integrazione nelle attivita').
+### 🚫 Trappole documentate
 
-## Decisioni architetturali aperte (DA DISCUTERE)
-
-### D1 — Tag automatici vs manuali
-DECISIONE: manuali. I tag elettori/iscritto_gn si applicano via UI, non sono dedotti dal sistema.
-
-### D2 — Categorie residue
-Mantenere `militante`, `dirigente_gn` per uso futuro? O eliminare tutto e lasciare solo elettori + iscritto_gn?
-PROPENSIONE: vedere se serviranno in futuro per gestire la struttura interna del nucleo (chi e' coordinatore, chi e' responsabile area, ecc.)
-
-### D3 — Confini di municipio
-Stasera: CAP + flag manuale (ibrido pragmatico)
-Futuro: PostGIS + dati Roma Capitale quando contatti > 3000
-
-### D4 — Form proprietario o G-form
-Per la fase MVP, G-form via webhook e' piu' veloce da implementare (1 ora di setup vs 4-6 ore form proprietario). Decidere caso per caso.
-
-## Note operative
-
-- Repo: https://github.com/edomenegazzo/gn-garba-crm
-- Prod: https://gn-garba-crm.vercel.app
-- Supabase project: jzqnmppgmfmobegltsbh (region Frankfurt)
-- Stack: Next.js 16, Supabase, Tailwind 4, Vercel
-- Dev locale: porta 3100
-
-## Cronologia sessioni
-
-### 12 maggio 2026 — Sessione 4
-- Pagine contatti (lista + dettaglio) operative
-- Deploy Vercel produzione
-- Discussione modello tag elettori/iscritti
-- Decisione: fermarsi per ripensare bene il modello dati
-- Sidebar: Militanti -> Elettori (rinomina cosmetica, pagina /elettori ancora da costruire)
-
+- Tailwind 4 fa i capricci con classi responsive avanzate (`sm:`, `lg:`, `divide-y`, `col-span-2`) → fallback CSS inline accettato
+- CAP a Roma non corrispondono a municipi reali (confini passano a metà via) → trade-off temporaneo, geocoding PostGIS futuro
+- Aruba "sottodomini": NON usare la sezione apposita, usare DNS records direttamente
+- Aruba "Sostituisci Record MX" è pericoloso → usare "Aggiungi su sottodominio"
