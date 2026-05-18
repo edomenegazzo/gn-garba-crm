@@ -54,6 +54,7 @@ const CampagnaColomboSchema = z.object({
   consenso_privacy: z.literal(true, {
     error: "consenso privacy obbligatorio",
   }),
+  consenso_ricontatto: z.boolean().default(false),
   // Risposte specifiche campagna
   risposte: z.object({
     trattamento_sicurezza: z.enum([
@@ -199,6 +200,7 @@ export async function POST(request: NextRequest) {
     contatto_id: contatto.id,
     campagna_slug: CAMPAGNA_SLUG,
     risposte: data.risposte,
+    consenso_ricontatto: data.consenso_ricontatto,
   };
 
   const { error: risposteError } = await supabase
